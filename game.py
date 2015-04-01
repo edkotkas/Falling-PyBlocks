@@ -2,7 +2,7 @@ import pygame
 import random
 import sys
 
-GRID_ENABLED = True
+GRID_ENABLED = False
 
 
 class Game:
@@ -68,6 +68,7 @@ class Game:
 
             for event in pygame.event.get():
 
+                # exit if X is pressed
                 if event.type == pygame.QUIT:
                     sys.exit()
 
@@ -76,6 +77,7 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         sys.exit()
 
+                    # key presses listener
                     if event.key == pygame.K_SPACE or event.key == pygame.K_DOWN:
                         self.game_speed = 50
                     if event.key == pygame.K_RIGHT:
@@ -83,51 +85,72 @@ class Game:
                     if event.key == pygame.K_LEFT:
                         direction = self.blocks.MOVE_LEFT
                     if event.key == pygame.K_UP:
+                        # rotate the block shape clockwise
                         self.blocks.rotate()
 
+                # if any key released set the game speed to normal
                 if event.type == pygame.KEYUP:
                     self.game_speed = 400
 
+            # bottom bar for score
             pygame.draw.rect(self.screen, (20,)*3, (0, 0, self.display_width, self.display_height))
 
-            self.grid(GRID_ENABLED)
-
+            # the score text
             score = pygame.font.SysFont("monospace", 18)
             score = score.render("Score: %d" % self.score, 1, (200,)*3)
             self.screen.blit(score, (10, self.display_height))
 
+            # reduce the speed of the game
             pygame.time.delay(self.game_speed)
 
+            # if no shape, make one
             if current_shape is None:
                 self.blocks.new()
                 current_shape = self.blocks.get()
             else:
+                # if direction is set, move
                 if direction is not None:
                     self.blocks.move(direction)
+
+                    # delay the reaction time, buggy
                     pygame.time.delay(100)
                     direction = None
+
+                # make the blocks fall
                 self.blocks.move(self.blocks.MOVE_DOWN)
+
+                # render the block shape to the screen
                 for shape in self.blocks.get():
+
+                    # convert the grid coordinates to pixel location
                     shape_x, shape_y = self.pixel(*shape)
 
                     pygame.draw.rect(self.screen, (100,)*3, (
                         shape_x, shape_y,
                         self.grid_real_x, self.grid_real_y), 3)
 
+            # render the block collection
             the_blocks = [i for i in self.blocks.display()]
             if len(the_blocks) > 0:
                 for block_x, block_y in the_blocks:
                     block_x, block_y = self.pixel(block_x, block_y)
                     pygame.draw.rect(self.screen, (100,)*3, (
                         block_x, block_y,
-                        self.grid_real_x, self.grid_real_y), 3)
+                        self.grid_real_x, self.grid_real_y))
 
+            # if the bottom line is full, add score
             if self.blocks.line():
                 self.score += 1
 
+            # update screen
             pygame.display.flip()
 
     def grid(self, enabled=True):
+        """
+        Displays the grid on the playable area.
+        :param enabled: boolean
+        :return:
+        """
         if enabled:
             for column in range(self.grid_x):
                 for row in range(self.grid_y):
@@ -263,9 +286,11 @@ class Blocks:
         :return: change current shape position to a new one
         """
 
+        # check if the block shape has reached the bottom of the screen
         if self._y_bottom+1 > self._grid_y-1:
             self.record()
 
+        # check if the new shape touches a block from the collection
         for x, y in self._shape:
             for xx, yy in self.display():
                     if x == xx and y+1 == yy:
@@ -328,7 +353,6 @@ class Blocks:
         self._shape = []
         self._current_shape = None
         self._rotation = 0
-        # shape position
 
         self._x_pos = 0
         self._y_pos = 0
@@ -338,11 +362,21 @@ class Blocks:
         self._y_bottom = 0
 
     def line(self):
+        """
+        Bottom line checker.
+        :return: boolean whether there's a full line
+        """
+
+        # bottom y integer
         bottom = self._grid_y-1
+
+        # boolean to match the length of matching x,y coordinates
         line = len([
             (x, y) for x, y in self.display()
             if y == bottom]) == self._grid_x
 
+        # could use some enhancement
+        # if there's a full line, remove the last line and push it down
         if line is True:
             record = []
             for shape in self._record:
