@@ -19,7 +19,7 @@ class Game:
         self.grid_y = 20
 
         # game speed
-        self.game_speed = 500
+        self.game_speed = 400
 
         # colours
         self.colour_clear = (25,)*3
@@ -72,12 +72,12 @@ class Game:
                     sys.exit()
 
                 if event.type == pygame.KEYDOWN:
+
                     if event.key == pygame.K_ESCAPE:
                         sys.exit()
 
-                    if event.key == pygame.K_SPACE:
-                        self.game_speed = 100
-
+                    if event.key == pygame.K_SPACE or event.key == pygame.K_DOWN:
+                        self.game_speed = 50
                     if event.key == pygame.K_RIGHT:
                         direction = self.blocks.MOVE_RIGHT
                     if event.key == pygame.K_LEFT:
@@ -86,17 +86,11 @@ class Game:
                         self.blocks.rotate()
 
                 if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_SPACE or event.key == pygame.K_DOWN:
-                        self.game_speed = 500
+                    self.game_speed = 400
 
             pygame.draw.rect(self.screen, (20,)*3, (0, 0, self.display_width, self.display_height))
 
-            if GRID_ENABLED is True:
-                for column in range(self.grid_x):
-                    for row in range(self.grid_y):
-                        pygame.draw.rect(self.screen, (10,)*3, (
-                            self.grid_real_x*column, self.grid_real_y*row,
-                            self.grid_real_x, self.grid_real_y), 1)
+            self.grid(GRID_ENABLED)
 
             score = pygame.font.SysFont("monospace", 18)
             score = score.render("Score: %d" % self.score, 1, (200,)*3)
@@ -110,15 +104,36 @@ class Game:
             else:
                 if direction is not None:
                     self.blocks.move(direction)
+                    pygame.time.delay(100)
+                    direction = None
+                self.blocks.move(self.blocks.MOVE_DOWN)
                 for shape in self.blocks.get():
                     shape_x, shape_y = self.pixel(*shape)
 
                     pygame.draw.rect(self.screen, (100,)*3, (
                         shape_x, shape_y,
                         self.grid_real_x, self.grid_real_y), 3)
-                self.blocks.move(self.blocks.MOVE_DOWN)
+
+            the_blocks = [i for i in self.blocks.display()]
+            if len(the_blocks) > 0:
+                for block_x, block_y in the_blocks:
+                    block_x, block_y = self.pixel(block_x, block_y)
+                    pygame.draw.rect(self.screen, (100,)*3, (
+                        block_x, block_y,
+                        self.grid_real_x, self.grid_real_y), 3)
+
+            if self.blocks.line():
+                self.score += 1
 
             pygame.display.flip()
+
+    def grid(self, enabled=True):
+        if enabled:
+            for column in range(self.grid_x):
+                for row in range(self.grid_y):
+                    pygame.draw.rect(self.screen, (10,)*3, (
+                        self.grid_real_x*column, self.grid_real_y*row,
+                        self.grid_real_x, self.grid_real_y), 1)
 
     def pixel(self, x=0, y=0):
         """
@@ -148,6 +163,8 @@ class Blocks:
         self._grid_y = grid_y
         self._display_width = display_width
         self._display_height = display_height
+        self._grid_real_x = self._display_width/self._grid_x
+        self._grid_real_y = self._display_height/self._grid_y
 
         # shape properties
         self._shape = []
@@ -188,12 +205,12 @@ class Blocks:
                 ((self._x, self._y), (self._x, self._y+1), (self._x, self._y+2), (self._x+1, self._y+2)),
                 ((self._x, self._y), (self._x, self._y+1), (self._x+1, self._y), (self._x+2, self._y)),
                 ((self._x, self._y), (self._x+1, self._y), (self._x+1, self._y+1), (self._x+1, self._y+2)),
-                ((self._x, self._y+1), (self._x+1, self._y+1), (self._x+2, self._y+2), (self._x+2, self._y))
+                ((self._x, self._y+1), (self._x+1, self._y+1), (self._x+2, self._y+1), (self._x+2, self._y))
             ),
             'J': (
                 ((self._x, self._y+2), (self._x+1, self._y+2), (self._x+1, self._y+1), (self._x+1, self._y)),
                 ((self._x, self._y), (self._x, self._y+1), (self._x+1, self._y+1), (self._x+2, self._y+1)),
-                ((self._x, self._y), (self._x, self._y+1), (self._x, self._y+2), (self._x, self._y+1)),
+                ((self._x, self._y), (self._x+1, self._y), (self._x, self._y+2), (self._x, self._y+1)),
                 ((self._x, self._y), (self._x+1, self._y), (self._x+2, self._y), (self._x+2, self._y+1))
             ),
             'T': (
@@ -204,7 +221,7 @@ class Blocks:
             )
         }
 
-    def new(self, shape='T'):
+    def new(self, shape='J'):
         """
         Creates a new shape.
         :param shape: optional string from self._shapes.keys()
@@ -246,6 +263,17 @@ class Blocks:
         :return: change current shape position to a new one
         """
 
+        if self._y_bottom+1 > self._grid_y-1:
+            self.record()
+
+        for x, y in self._shape:
+            for xx, yy in self.display():
+                    if x == xx and y+1 == yy:
+                        if y < 2:
+                            print "game over"
+                        else:
+                            self.record()
+
         # check for direction and if it's in the inbound
         if direction is self.MOVE_DOWN and self._y_bottom < self._grid_y-1:
             self._y_pos += 1
@@ -272,32 +300,62 @@ class Blocks:
         # make the new shape
         self.new(self._current_shape)
 
-    def record(self, pos):
+    def record(self):
         """
         Record the previous shapes from their last position.
-        :param pos: tuple of x,y coordinates
         :return:
         """
 
-        # save the last shape with position
-        self._record.append(pos)
+        # used for saving position when the block has landed
+        self._record.append(self._shape)
+        self.clear()
 
     def display(self):
         """
         Generator for the self._record list
         :return: list of tuples
         """
-
         for i in self._record:
-            yield i
+            for j in i:
+                yield j
 
     def clear(self):
         """
-        Clear self._shape list
-        :return: emptied shape list
+        Clear the setup.
+        :return:
         """
 
         self._shape = []
+        self._current_shape = None
+        self._rotation = 0
+        # shape position
+
+        self._x_pos = 0
+        self._y_pos = 0
+
+        self._x_right = 0
+        self._x_left = self._grid_x
+        self._y_bottom = 0
+
+    def line(self):
+        bottom = self._grid_y-1
+        line = len([
+            (x, y) for x, y in self.display()
+            if y == bottom]) == self._grid_x
+
+        if line is True:
+            record = []
+            for shape in self._record:
+                s = []
+                for x, y in shape:
+                    print y, self._grid_y
+                    if y != self._grid_y-1:
+                        s.append((x, y+1))
+                record.append(s)
+            self._record = record
+
+        return line
+
 
 if __name__ == "__main__":
     fpb = Game()
