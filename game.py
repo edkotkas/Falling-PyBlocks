@@ -1,12 +1,12 @@
 import pygame
 import random
 import sys
+import time
 
 GRID_ENABLED = False
 
 
 class Game:
-
     def __init__(self):
         """
         Falling PyBlocks, a clone of Tetris.
@@ -19,10 +19,10 @@ class Game:
         self.grid_y = 20
 
         # game speed
-        self.game_speed = 400
+        self.game_speed = 0.5
 
         # colours
-        self.colour_clear = (25,)*3
+        self.colour_clear = (25,) * 3
 
         # window setup
         self.window_width = 460
@@ -33,8 +33,8 @@ class Game:
         self.display_height = 440
 
         # grid box sizes
-        self.grid_real_x = self.display_width/self.grid_x
-        self.grid_real_y = self.display_height/self.grid_y
+        self.grid_real_x = self.display_width / self.grid_x
+        self.grid_real_y = self.display_height / self.grid_y
 
         # score text box sizes
         self.score_width = 100
@@ -58,6 +58,8 @@ class Game:
         """
         current_shape = None
         direction = None
+        rotation = False
+        start_time = time.time()
         while True:
 
             # fps
@@ -79,7 +81,7 @@ class Game:
 
                     # key presses listener
                     if event.key == pygame.K_SPACE or event.key == pygame.K_DOWN:
-                        self.game_speed = 50
+                        self.game_speed = 0.1
                     if event.key == pygame.K_RIGHT:
                         direction = self.blocks.MOVE_RIGHT
                     if event.key == pygame.K_LEFT:
@@ -90,18 +92,20 @@ class Game:
 
                 # if any key released set the game speed to normal
                 if event.type == pygame.KEYUP:
-                    self.game_speed = 400
+                    self.game_speed = 0.5
+
+                    rotation = False
+
+                    if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                        direction = None
 
             # bottom bar for score
-            pygame.draw.rect(self.screen, (20,)*3, (0, 0, self.display_width, self.display_height))
+            pygame.draw.rect(self.screen, (20,) * 3, (0, 0, self.display_width, self.display_height))
 
             # the score text
             score = pygame.font.SysFont("monospace", 18)
-            score = score.render("Score: %d" % self.score, 1, (200,)*3)
+            score = score.render("Score: %d" % self.score, 1, (200,) * 3)
             self.screen.blit(score, (10, self.display_height))
-
-            # reduce the speed of the game
-            pygame.time.delay(self.game_speed)
 
             # if no shape, make one
             if current_shape is None:
@@ -112,20 +116,21 @@ class Game:
                 if direction is not None:
                     self.blocks.move(direction)
 
-                    # delay the reaction time, buggy
-                    pygame.time.delay(100)
-                    direction = None
+                # if rotation is true, rotate
+                if rotation is True:
+                    self.blocks.rotate()
 
-                # make the blocks fall
-                self.blocks.move(self.blocks.MOVE_DOWN)
+                # make the blocks fall after a fraction of a second
+                if time.time() - start_time > self.game_speed:
+                    self.blocks.move(self.blocks.MOVE_DOWN)
+                    start_time = time.time()
 
                 # render the block shape to the screen
                 for shape in self.blocks.get():
-
                     # convert the grid coordinates to pixel location
                     shape_x, shape_y = self.pixel(*shape)
 
-                    pygame.draw.rect(self.screen, (100,)*3, (
+                    pygame.draw.rect(self.screen, (100,) * 3, (
                         shape_x, shape_y,
                         self.grid_real_x, self.grid_real_y), 3)
 
@@ -134,7 +139,7 @@ class Game:
             if len(the_blocks) > 0:
                 for block_x, block_y in the_blocks:
                     block_x, block_y = self.pixel(block_x, block_y)
-                    pygame.draw.rect(self.screen, (100,)*3, (
+                    pygame.draw.rect(self.screen, (100,) * 3, (
                         block_x, block_y,
                         self.grid_real_x, self.grid_real_y))
 
@@ -154,8 +159,8 @@ class Game:
         if enabled:
             for column in range(self.grid_x):
                 for row in range(self.grid_y):
-                    pygame.draw.rect(self.screen, (10,)*3, (
-                        self.grid_real_x*column, self.grid_real_y*row,
+                    pygame.draw.rect(self.screen, (10,) * 3, (
+                        self.grid_real_x * column, self.grid_real_y * row,
                         self.grid_real_x, self.grid_real_y), 1)
 
     def pixel(self, x=0, y=0):
@@ -165,11 +170,10 @@ class Game:
         :param y: int between 0 and 20
         :return: converted coordinates
         """
-        return x*(self.display_width/10), y*(self.display_height/20)
+        return x * (self.display_width / 10), y * (self.display_height / 20)
 
 
 class Blocks:
-
     def __init__(self, (grid_x, grid_y), (display_width, display_height), (start_x, start_y)=(0, 0)):
         """
         Game block manager.
@@ -186,8 +190,8 @@ class Blocks:
         self._grid_y = grid_y
         self._display_width = display_width
         self._display_height = display_height
-        self._grid_real_x = self._display_width/self._grid_x
-        self._grid_real_y = self._display_height/self._grid_y
+        self._grid_real_x = self._display_width / self._grid_x
+        self._grid_real_y = self._display_height / self._grid_y
 
         # shape properties
         self._shape = []
@@ -210,41 +214,44 @@ class Blocks:
         # block shapes
         self._shapes = {
             'O': (
-                ((self._x, self._y), (self._x+1, self._y+1), (self._x+1, self._y), (self._x, self._y+1)),
+                ((self._x, self._y), (self._x + 1, self._y + 1), (self._x + 1, self._y), (self._x, self._y + 1)),
             ),
             'I': (
-                ((self._x, self._y), (self._x, self._y+1), (self._x, self._y+2), (self._x, self._y+3)),
-                ((self._x, self._y), (self._x+1, self._y), (self._x+2, self._y), (self._x+3, self._y))
+                ((self._x, self._y), (self._x, self._y + 1), (self._x, self._y + 2), (self._x, self._y + 3)),
+                ((self._x, self._y), (self._x + 1, self._y), (self._x + 2, self._y), (self._x + 3, self._y))
             ),
             'S': (
-                ((self._x, self._y+1), (self._x+1, self._y+1), (self._x+1, self._y), (self._x+2, self._y)),
-                ((self._x, self._y), (self._x, self._y+1), (self._x+1, self._y+1), (self._x+1, self._y+2))
+                ((self._x, self._y + 1), (self._x + 1, self._y + 1), (self._x + 1, self._y), (self._x + 2, self._y)),
+                ((self._x, self._y), (self._x, self._y + 1), (self._x + 1, self._y + 1), (self._x + 1, self._y + 2))
             ),
             'Z': (
-                ((self._x, self._y), (self._x+1, self._y), (self._x+1, self._y+1), (self._x+2, self._y+1)),
-                ((self._x, self._y+1), (self._x, self._y+2), (self._x+1, self._y), (self._x+1, self._y+1))
+                ((self._x, self._y), (self._x + 1, self._y), (self._x + 1, self._y + 1), (self._x + 2, self._y + 1)),
+                ((self._x, self._y + 1), (self._x, self._y + 2), (self._x + 1, self._y), (self._x + 1, self._y + 1))
             ),
             'L': (
-                ((self._x, self._y), (self._x, self._y+1), (self._x, self._y+2), (self._x+1, self._y+2)),
-                ((self._x, self._y), (self._x, self._y+1), (self._x+1, self._y), (self._x+2, self._y)),
-                ((self._x, self._y), (self._x+1, self._y), (self._x+1, self._y+1), (self._x+1, self._y+2)),
-                ((self._x, self._y+1), (self._x+1, self._y+1), (self._x+2, self._y+1), (self._x+2, self._y))
+                ((self._x, self._y), (self._x, self._y + 1), (self._x, self._y + 2), (self._x + 1, self._y + 2)),
+                ((self._x, self._y), (self._x, self._y + 1), (self._x + 1, self._y), (self._x + 2, self._y)),
+                ((self._x, self._y), (self._x + 1, self._y), (self._x + 1, self._y + 1), (self._x + 1, self._y + 2)),
+                ((self._x, self._y + 1), (self._x + 1, self._y + 1), (self._x + 2, self._y + 1), (self._x + 2, self._y))
             ),
             'J': (
-                ((self._x, self._y+2), (self._x+1, self._y+2), (self._x+1, self._y+1), (self._x+1, self._y)),
-                ((self._x, self._y), (self._x, self._y+1), (self._x+1, self._y+1), (self._x+2, self._y+1)),
-                ((self._x, self._y), (self._x+1, self._y), (self._x, self._y+2), (self._x, self._y+1)),
-                ((self._x, self._y), (self._x+1, self._y), (self._x+2, self._y), (self._x+2, self._y+1))
+                (
+                (self._x, self._y + 2), (self._x + 1, self._y + 2), (self._x + 1, self._y + 1), (self._x + 1, self._y)),
+                ((self._x, self._y), (self._x, self._y + 1), (self._x + 1, self._y + 1), (self._x + 2, self._y + 1)),
+                ((self._x, self._y), (self._x + 1, self._y), (self._x, self._y + 2), (self._x, self._y + 1)),
+                ((self._x, self._y), (self._x + 1, self._y), (self._x + 2, self._y), (self._x + 2, self._y + 1))
             ),
             'T': (
-                ((self._x, self._y), (self._x+1, self._y), (self._x+1, self._y+1), (self._x+2, self._y)),
-                ((self._x, self._y+1), (self._x+1, self._y), (self._x+1, self._y+1), (self._x+1, self._y+2)),
-                ((self._x, self._y+1), (self._x+1, self._y), (self._x+1, self._y+1), (self._x+2, self._y+1)),
-                ((self._x, self._y), (self._x, self._y+1), (self._x+1, self._y+1), (self._x, self._y+2))
+                ((self._x, self._y), (self._x + 1, self._y), (self._x + 1, self._y + 1), (self._x + 2, self._y)),
+                (
+                (self._x, self._y + 1), (self._x + 1, self._y), (self._x + 1, self._y + 1), (self._x + 1, self._y + 2)),
+                (
+                (self._x, self._y + 1), (self._x + 1, self._y), (self._x + 1, self._y + 1), (self._x + 2, self._y + 1)),
+                ((self._x, self._y), (self._x, self._y + 1), (self._x + 1, self._y + 1), (self._x, self._y + 2))
             )
         }
 
-    def new(self, shape='J'):
+    def new(self, shape=None):
         """
         Creates a new shape.
         :param shape: optional string from self._shapes.keys()
@@ -261,7 +268,7 @@ class Blocks:
         # apply shape to the self._shape list with current rotation
         shape = self._shapes.get(self._current_shape)[self._rotation]
         for x, y in shape:
-            x, y = x+self._x_pos, y+self._y_pos
+            x, y = x + self._x_pos, y + self._y_pos
             self._shape.append((x, y))
 
             # collision detection
@@ -287,24 +294,24 @@ class Blocks:
         """
 
         # check if the block shape has reached the bottom of the screen
-        if self._y_bottom+1 > self._grid_y-1:
+        if self._y_bottom + 1 > self._grid_y - 1:
             self.record()
 
         # check if the new shape touches a block from the collection
         for x, y in self._shape:
             for xx, yy in self.display():
-                    if x == xx and y+1 == yy:
-                        if y < 2:
-                            print "game over"
-                        else:
-                            self.record()
+                if x == xx and y + 1 == yy:
+                    if y < 2:
+                        print "game over"
+                    else:
+                        self.record()
 
         # check for direction and if it's in the inbound
-        if direction is self.MOVE_DOWN and self._y_bottom < self._grid_y-1:
+        if direction is self.MOVE_DOWN:
             self._y_pos += 1
-        if direction is self.MOVE_LEFT and self._x_left > 0:
+        if direction is self.MOVE_LEFT and self._x_left != 0:
             self._x_pos -= 1
-        if direction is self.MOVE_RIGHT and self._x_right < self._grid_x-1:
+        if direction is self.MOVE_RIGHT and self._x_right != self._grid_x-1:
             self._x_pos += 1
 
         # make the new shape
@@ -317,7 +324,7 @@ class Blocks:
         """
 
         # check if the next rotation is available, if not revert to original shape
-        if self._rotation != len(self._shapes[self._current_shape])-1:
+        if self._rotation != len(self._shapes[self._current_shape]) - 1:
             self._rotation += 1
         else:
             self._rotation = 0
@@ -332,7 +339,8 @@ class Blocks:
         """
 
         # used for saving position when the block has landed
-        self._record.append(self._shape)
+        for block in self._shape:
+            self._record.append(block)
         self.clear()
 
     def display(self):
@@ -341,8 +349,7 @@ class Blocks:
         :return: list of tuples
         """
         for i in self._record:
-            for j in i:
-                yield j
+            yield i
 
     def clear(self):
         """
@@ -367,28 +374,18 @@ class Blocks:
         :return: boolean whether there's a full line
         """
 
-        # bottom y integer
-        bottom = self._grid_y-1
+        for grid_y in range(self._grid_y):
+            x_line = [(x, y) for x, y in self.display() if y is grid_y]
 
-        # boolean to match the length of matching x,y coordinates
-        line = len([
-            (x, y) for x, y in self.display()
-            if y == bottom]) == self._grid_x
+            if len(x_line) == self._grid_x:
+                for line in x_line:
+                    self._record.remove(line)
 
-        # could use some enhancement
-        # if there's a full line, remove the last line and push it down
-        if line is True:
-            record = []
-            for shape in self._record:
-                s = []
-                for x, y in shape:
-                    print y, self._grid_y
-                    if y != self._grid_y-1:
-                        s.append((x, y+1))
-                record.append(s)
-            self._record = record
+                for i, (_, y) in enumerate(self._record):
+                    if y < grid_y:
+                        self._record[i] = self._record[i][0], self._record[i][1] + 1
 
-        return line
+                return True
 
 
 if __name__ == "__main__":
