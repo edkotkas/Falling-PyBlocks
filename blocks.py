@@ -1,4 +1,5 @@
 import random
+import time
 
 
 class Blocks:
@@ -26,11 +27,17 @@ class Blocks:
         self._current_shape = None
         self._rotation = 0
 
+        self._red = None
+        self._green = None
+        self._blue = None
+
         # shape position
         self._x = start_x
         self._y = start_y
         self._x_pos = 0
         self._y_pos = 0
+
+        self._full = False
 
         # shapes history
         self._record = []
@@ -78,13 +85,21 @@ class Blocks:
             )
         }
 
-    def new(self, shape=None, rotation=None):
+    def new(self, shape=None, rotation=None, colour=None):
         """
         Creates a new shape.
         :param shape: optional string from self._shapes.keys()
         :return:
         """
         self._shape = []
+
+        if colour is not None:
+            self._red, self._green, self._blue = colour
+
+        if self._current_shape is None and colour is None:
+            self._red = random.randint(0, 255)
+            self._green = random.randint(0, 255)
+            self._blue = random.randint(0, 255)
 
         # check if we want a predefined shape to appear
         if shape is not None:
@@ -101,7 +116,18 @@ class Blocks:
         shape = self._shapes.get(self._current_shape)[self._rotation]
         for x, y in shape:
             x, y = x + self._x_pos, y + self._y_pos
-            self._shape.append((x, y))
+            self._shape.append(((x, y), self.get_colour()))
+
+        out_of_bounds = len([(x, y) for (x, y), _ in self._shape if x > self._grid_x-1])
+        if out_of_bounds > 0:
+            self._x_pos -= out_of_bounds
+
+    def get_colour(self):
+        """
+        Returns the colour of the current shape.
+        :return: RGB
+        """
+        return self._red, self._green, self._blue
 
     def get(self):
         """
@@ -119,7 +145,12 @@ class Blocks:
 
         left = True
         right = True
-        for current_x, current_y in self._shape:
+        top_y = self._grid_x
+
+        for (current_x, current_y), _ in self._shape:
+
+            if current_y < top_y:
+                top_y = current_y
 
             # collision with play field
             if current_x - 1 < 0:
@@ -131,7 +162,13 @@ class Blocks:
 
             # collision with other blocks
             if len(self._record) > 0:
-                for block_x, block_y in self._record:
+                for (block_x, block_y), _ in self._record:
+
+                    if top_y < 1 and current_y + 1 == block_y:
+                        self._full = True
+                        self.record()
+                        break
+
                     if current_x + 1 == block_x and current_y == block_y:
                         right = False
                     if current_x - 1 == block_x and current_y == block_y:
@@ -199,22 +236,33 @@ class Blocks:
         self._x_pos = 0
         self._y_pos = 0
 
+        self._red = None
+        self._green = None
+        self._blue = None
+
     def line(self):
         """
-        Bottom line checker.
-        :return: boolean whether there's a full line
+        Full line checker.
+        :return: boolean
         """
 
         for grid_y in range(self._grid_y):
-            x_line = [(x, y) for x, y in self.display() if y is grid_y]
+            line = [((x, y), colour) for (x, y), colour in self.display() if y is grid_y]
 
-            if len(x_line) == self._grid_x:
-                for line in x_line:
-                    self._record.remove(line)
+            if len(line) == self._grid_x:
+                for shape in line:
+                    self._record.remove(shape)
 
-                for i, (_, y) in enumerate(self._record):
+                for i, ((_, y), _) in enumerate(self._record):
                     if y < grid_y:
-                        self._record[i] = self._record[i][0], self._record[i][1] + 1
+                        self._record[i] = (self._record[i][0][0], self._record[i][0][1] + 1), self._record[i][1]
 
                 return True
 
+    def full(self):
+        """
+        Returns whether the play field is full.
+        :return: boolean
+        """
+
+        return self._full
