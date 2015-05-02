@@ -1,5 +1,4 @@
 import random
-import time
 
 
 class Blocks:
@@ -24,7 +23,10 @@ class Blocks:
 
         # shape properties
         self._shape = []
-        self._current_shape = None
+        self._shape_static = None
+        self._rotation_static = None
+        self._shape_current = None
+        self._shape_next = None
         self._rotation = 0
 
         self._red = None
@@ -85,35 +87,38 @@ class Blocks:
             )
         }
 
-    def new(self, shape=None, rotation=None, colour=None):
+    def new(self, shape=None, rotation=None):
         """
         Creates a new shape.
         :param shape: optional string from self._shapes.keys()
+        :param rotation: optional int available for shape
         :return:
         """
         self._shape = []
 
-        if colour is not None:
-            self._red, self._green, self._blue = colour
-
-        if self._current_shape is None and colour is None:
+        if self._shape_current is None:
             self._red = random.randint(0, 255)
             self._green = random.randint(0, 255)
             self._blue = random.randint(0, 255)
 
-        # check if we want a predefined shape to appear
-        if shape is not None:
-            self._current_shape = shape
+        # check if any static shapes are in place
+        if self._shape_next is True:
+            self._shape_current = self._shape_static
+            self._shape_next = False
+            self._shape_static = random.choice(self._shapes.keys())
+        elif shape is not None and shape in self._shapes.keys():
+            self._shape_current = shape
         else:
-            self._current_shape = random.choice(self._shapes.keys())
+            self._shape_current = random.choice(self._shapes.keys())
+            self._shape_static = random.choice(self._shapes.keys())
 
         if rotation is not None:
             self._rotation = rotation
         else:
-            self._rotation = random.choice([i for i in range(0, len(self._shapes.get(self._current_shape)))])
+            self._rotation = random.choice([i for i in range(0, len(self._shapes.get(self._shape_current)))])
 
         # apply shape to the self._shape list with current rotation
-        shape = self._shapes.get(self._current_shape)[self._rotation]
+        shape = self._shapes.get(self._shape_current)[self._rotation]
         for x, y in shape:
             x, y = x + self._x_pos, y + self._y_pos
             self._shape.append(((x, y), self.get_colour()))
@@ -129,12 +134,22 @@ class Blocks:
         """
         return self._red, self._green, self._blue
 
-    def get(self):
+    def get_shape(self):
         """
         Returns the shape in the form of a list for printing/rendering.
         :return: list of tuples
         """
         return self._shape
+
+    def get_shape_next(self):
+        """
+        Returns the next shape in the queue.
+        For the panel only.
+        :return:
+        """
+        # apply shape to the self._shape list with current rotation
+        for x, y in self._shapes.get(self._shape_static)[0]:
+            yield ((x, y), (200, ) * 3)
 
     def move(self, direction):
         """
@@ -164,7 +179,7 @@ class Blocks:
             if len(self._record) > 0:
                 for (block_x, block_y), _ in self._record:
 
-                    if top_y < 1 and current_y + 1 == block_y:
+                    if top_y < 1 and current_y + 1 == block_y and current_x + 1 == block_x:
                         self._full = True
                         self.record()
                         break
@@ -187,7 +202,7 @@ class Blocks:
             self._x_pos += 1
 
         # make the new shape
-        self.new(self._current_shape, self._rotation)
+        self.new(self._shape_current, self._rotation)
 
     def rotate(self):
         """
@@ -196,20 +211,20 @@ class Blocks:
         """
 
         # check if the next rotation is available, if not revert to original shape
-        if self._rotation != len(self._shapes[self._current_shape]) - 1:
+        if self._rotation != len(self._shapes[self._shape_current]) - 1:
             self._rotation += 1
         else:
             self._rotation = 0
 
         # make the new shape
-        self.new(self._current_shape, self._rotation)
+        self.new(self._shape_current, self._rotation)
 
     def record(self):
         """
         Record the previous shapes from their last position.
         :return:
         """
-
+        self._shape_next = True
         # used for saving position when the block has landed
         for block in self._shape:
             self._record.append(block)
@@ -230,7 +245,7 @@ class Blocks:
         """
 
         self._shape = []
-        self._current_shape = None
+        self._shape_current = None
         self._rotation = 0
 
         self._x_pos = 0

@@ -1,5 +1,4 @@
 import pygame
-import random
 import sys
 import time
 
@@ -55,13 +54,15 @@ class Game:
             (4, 0)
         )
 
+        self.top_players = {1: ('Player', 1000)}
+
     def loop(self, frames):
         """
         Main game loop.
         :param frames: integer to represent how many frames to display per second
         :return: main game loop
         """
-        current_shape = None
+        shape_current = None
         direction = None
         start_time = time.time()
         move_time = 0
@@ -102,10 +103,37 @@ class Game:
                     self.game_speed = 0.5
                     direction = None
 
-            # bottom bar for score
+            # play area background
             pygame.draw.rect(self.screen, (20,) * 3, (0, 0, self.display_width, self.display_height))
 
+            # side panel background
+            pygame.draw.rect(self.screen, (25,) * 3, (
+                self.display_width, 0,
+                self.window_width - self.display_width, self.window_height))
+
+            # next shape panel
+            next_shape = pygame.font.SysFont("monospace", 16)
+            next_shape = next_shape.render("Next shape:", 1, (200,) * 3)
+            self.screen.blit(next_shape, (self.display_width+10, 10))
+
+            # top players panel
+            top = pygame.font.SysFont("monospace", 20)
+            top = top.render("Top 10:", 1, (200,) * 3)
+            self.screen.blit(top, (self.display_width + 5, 140))
+            for i, player in enumerate(self.top_players.keys()):
+                multiplier = 20 * i
+                player_name = self.top_players.get(player)[0]
+                player_score = self.top_players.get(player)[1]
+
+                board = pygame.font.SysFont("monospace", 14)
+                board = board.render("%d.%s - %s" % (i + 1, player_name, player_score), 1, (200,) * 3)
+                self.screen.blit(board, (self.display_width + 5, 180 + multiplier))
+
             # the score text
+            pygame.draw.rect(self.screen, (25,) * 3, (
+                0, self.display_height,
+                self.display_width, self.window_height - self.display_width))
+
             score = pygame.font.SysFont("monospace", 18)
             score = score.render("Score: %d" % self.score, 1, (200,) * 3)
             self.screen.blit(score, (10, self.display_height))
@@ -114,13 +142,13 @@ class Game:
                 self.grid()
 
             # if no shape, make one
-            if current_shape is None:
+            if shape_current is None:
                 self.blocks.new()
-                current_shape = self.blocks.get()
+                shape_current = self.blocks.get_shape()
 
             elif not self.blocks.full():
 
-                if time.time() - move_time > 0.05:
+                if time.time() - move_time > 0.025:
                     self.blocks.move(direction)
 
                 # make the blocks fall after a fraction of a second
@@ -129,7 +157,7 @@ class Game:
                     start_time = time.time()
 
                 # render the block shape to the screen
-                for shape, colour in self.blocks.get():
+                for shape, colour in self.blocks.get_shape():
                     # convert the grid coordinates to pixel location
                     shape_x, shape_y = self.pixel(*shape)
 
@@ -143,6 +171,9 @@ class Game:
 
             else:
                 self.over = True
+
+            # display the next shape on the panel
+            self.next_shape_panel()
 
             # render the block collection
             the_blocks = [shape for shape in self.blocks.display()]
@@ -167,6 +198,21 @@ class Game:
 
             # update screen
             pygame.display.flip()
+
+    def next_shape_panel(self):
+        """
+        Displays the next shape on screen.
+        """
+        for (x, y), colour in self.blocks.get_shape_next():
+            x, y = x - 3, y
+
+            pygame.draw.rect(self.screen, colour, (
+                self.display_width + 12 + (25 * x), 35 + (25 * y), 25, 25
+            ))
+
+            pygame.draw.rect(self.screen, (25,) * 3, (
+                self.display_width + 12 + (25 * x), 35 + (25 * y), 25, 25
+            ), 1)
 
     def grid(self):
         """
