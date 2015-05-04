@@ -84,9 +84,29 @@ class Game:
         move_time = 0
         paused = False
 
-        pygame.mixer.music.play()
+        # pygame.mixer.music.play()
 
         while True:
+
+            while paused is True:
+
+                for event in pygame.event.get():
+
+                    # exit if X is pressed
+                    if event.type == pygame.QUIT:
+                        sys.exit()
+
+                    if event.type == pygame.KEYDOWN:
+
+                        if event.key == pygame.K_ESCAPE:
+                            sys.exit()
+
+                        if event.key == pygame.K_r:
+                            print "reset"
+                            paused = False
+
+                        if event.key == pygame.K_p:
+                            paused = False
 
             # fps
             pygame.time.Clock().tick(self.fps)
@@ -128,10 +148,7 @@ class Game:
                         print "reset"
 
                     if event.key == pygame.K_p:
-                        if paused is True:
-                            paused = False
-                        else:
-                            paused = True
+                        paused = True
 
                 # if any key released set the game speed to normal
                 if event.type == pygame.KEYUP:
@@ -251,6 +268,11 @@ class Game:
 
             if self.over:
                 self.game_over()
+
+            if paused is True:
+                paused_text = pygame.font.SysFont("monospace", 32)
+                paused_text = paused_text.render("PAUSED", 2, (255,) * 3)
+                self.screen.blit(paused_text, ((self.display_width / 2) - 32, self.display_height / 2))
 
             # update screen
             pygame.display.flip()
