@@ -83,10 +83,13 @@ class Game:
         start_time = time.time()
         move_time = 0
         paused = False
-
-        # pygame.mixer.music.play()
+        music_on = True
 
         while True:
+
+            if music_on is True:
+                if not pygame.mixer.music.get_busy():
+                    pygame.mixer.music.play()
 
             while paused is True:
 
@@ -126,26 +129,29 @@ class Game:
                         sys.exit()
 
                     # key presses listener
-                    if event.key == pygame.K_SPACE or event.key == pygame.K_DOWN:
+                    if event.key == pygame.K_SPACE or event.key == pygame.K_DOWN or event.key == pygame.K_s:
                         self.game_speed = 0.05
-                    if event.key == pygame.K_RIGHT:
+                    if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         move_time = time.time()
                         direction = self.blocks.MOVE_RIGHT
-                    if event.key == pygame.K_LEFT:
+                    if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         move_time = time.time()
                         direction = self.blocks.MOVE_LEFT
-                    if event.key == pygame.K_UP:
+                    if event.key == pygame.K_UP or event.key == pygame.K_w:
                         # rotate the block shape clockwise
                         self.blocks.rotate()
 
                     if event.key == pygame.K_m:
                         if pygame.mixer.music.get_busy():
                             pygame.mixer.music.stop()
+                            music_on = False
                         else:
                             pygame.mixer.music.play()
+                            music_on = True
 
                     if event.key == pygame.K_r:
-                        print "reset"
+                        self.reset()
+                        self.blocks.reset()
 
                     if event.key == pygame.K_p:
                         paused = True
@@ -374,6 +380,15 @@ class Game:
             creator = self.screen.blit(creator, (5, self.window_height - 18))
 
             pygame.display.flip()
+
+    def reset(self):
+        """
+        Reset the game.
+        :return:
+        """
+
+        self.over = False
+        self.score = 0
 
 if __name__ == "__main__":
     fpb = Game()

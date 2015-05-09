@@ -255,6 +255,30 @@ class Blocks:
         self._green = None
         self._blue = None
 
+    def reset(self):
+        """
+        Reset the game.
+        :return:
+        """
+
+        self._shape = []
+        self._shape_static = None
+        self._rotation_static = None
+        self._shape_current = None
+        self._shape_next = None
+        self._rotation = 0
+
+        self._red = None
+        self._green = None
+        self._blue = None
+
+        self._x_pos = 0
+        self._y_pos = 0
+
+        self._full = False
+
+        self._record = []
+
     def line(self):
         """
         Full line checker.
