@@ -56,6 +56,7 @@ class Game:
         self.score_height = 40
 
         self.score = 0
+        self.player_name = ""
 
         self.screen = pygame.display.set_mode((self.window_width, self.window_height))
 
@@ -65,13 +66,7 @@ class Game:
             (4, 0)
         )
 
-        self.top_players = {
-            1: ('Player1', 1000),
-            2: ('Player2', 140),
-            3: ('Player3', 102),
-            4: ('Player4', 98),
-            5: ('Player5', 1)
-        }
+        self.top_players = []
 
     def loop(self):
         """
@@ -84,6 +79,7 @@ class Game:
         move_time = 0
         paused = False
         music_on = True
+        creator = None
 
         while True:
 
@@ -104,11 +100,7 @@ class Game:
                         if event.key == pygame.K_ESCAPE:
                             sys.exit()
 
-                        if event.key == pygame.K_r:
-                            print "reset"
-                            paused = False
-
-                        if event.key == pygame.K_p:
+                        if event.key == pygame.K_p or event.key == pygame.K_r:
                             paused = False
 
             # fps
@@ -119,7 +111,7 @@ class Game:
 
             for event in pygame.event.get():
 
-                # exit if X is pressed
+                # exit if window X is pressed
                 if event.type == pygame.QUIT:
                     sys.exit()
 
@@ -161,60 +153,50 @@ class Game:
                     self.game_speed = 0.5
                     direction = None
 
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mouse_pos = pygame.mouse.get_pos()
+
+                    if creator.collidepoint(mouse_pos):
+                        webbrowser.open("https://github.com/edkotkas")
+
             # play area background
             pygame.draw.rect(self.screen, (22,) * 3, (0, 0, self.display_width, self.display_height))
 
             # side panel background
-            pygame.draw.rect(self.screen, (25,) * 3, (
+            pygame.draw.rect(self.screen, (20,) * 3, (
                 self.display_width, 0,
-                self.window_width - self.display_width, self.window_height), 3)
+                self.window_width - self.display_width, self.window_height))
 
             # next shape panel
-            next_shape = pygame.font.SysFont("monospace", 16)
-            next_shape = next_shape.render("Next shape:", 1, (200,) * 3)
-            self.screen.blit(next_shape, (self.display_width + 5, 10))
+            self.screen.blit(self.make_text("Next Shape:", 16, font="arial"), (self.display_width + 5, 10))
 
             # top players panel
-            top = pygame.font.SysFont("monospace", 20)
-            top = top.render("Top 5:", 1, (200,) * 3)
-            self.screen.blit(top, (self.display_width + 5, 150))
-            for i, player in enumerate(self.top_players.keys()):
+            self.screen.blit(self.make_text("Top 5:", 20, font="arial"), (self.display_width + 5, 180))
+            for i, (score, player) in enumerate(self.top_players):
                 multiplier = 20 * i
-                player_name = self.top_players.get(player)[0]
-                player_score = self.top_players.get(player)[1]
+                count = i + 1
 
-                board = pygame.font.SysFont("monospace", 14)
-                board = board.render("%s - %s" % (player_name, player_score), 1, (200,) * 3)
-                self.screen.blit(board, (self.display_width + 10, 180 + multiplier))
+                self.screen.blit(self.make_text("%d.%s - %d" % (count, player, score)),
+                                 (self.display_width + 10, 220 + multiplier))
 
-            movement = pygame.font.SysFont("monospace", 14)
-            movement = movement.render("Controls:", 1, (200,) * 3)
-            self.screen.blit(movement, (self.display_width + 5, 320))
-
-            wasd = pygame.font.SysFont("monospace", 14)
-            wasd = wasd.render("Arrows - move", 1, (200,) * 3)
-            self.screen.blit(wasd, (self.display_width + 5, 340))
-
-            music = pygame.font.SysFont("monospace", 14)
-            music = music.render("M - music off/on", 1, (200,) * 3)
-            self.screen.blit(music, (self.display_width + 5, 360))
-
-            reset = pygame.font.SysFont("monospace", 14)
-            reset = reset.render("R - reset", 1, (200,) * 3)
-            self.screen.blit(reset, (self.display_width + 5, 380))
-
-            pause = pygame.font.SysFont("monospace", 14)
-            pause = pause.render("P - pause", 1, (200,) * 3)
-            self.screen.blit(pause, (self.display_width + 5, 400))
+            # controls texts
+            self.screen.blit(self.make_text("Controls:", font="arial"), (self.display_width + 5, 335))
+            self.screen.blit(self.make_text("Arrows - move", font="arial"), (self.display_width + 5, 355))
+            self.screen.blit(self.make_text("M - music off/on", font="arial"), (self.display_width + 5, 375))
+            self.screen.blit(self.make_text("R - reset", font="arial"), (self.display_width + 5, 395))
+            self.screen.blit(self.make_text("P - pause", font="arial"), (self.display_width + 5, 415))
 
             # the score text
-            pygame.draw.rect(self.screen, (25,) * 3, (
+            pygame.draw.rect(self.screen, (20,) * 3, (
                 0, self.display_height,
                 self.display_width, self.window_height - self.display_width))
 
-            score = pygame.font.SysFont("monospace", 18)
-            score = score.render("SCORE: %d" % self.score, 2, (255,) * 3)
-            self.screen.blit(score, (10, self.display_height))
+            creator = self.screen.blit(
+                self.make_text("Falling PyBlocks by Eduard Kotkas (GitHub - @edkotkas)",
+                               colour=(255,) * 3
+                               ), (5, self.window_height - 18))
+
+            self.screen.blit(self.make_text("SCORE: %d" % self.score, 18, font="arial"), (self.display_width + 5, 140))
 
             if GRID_ENABLED is True:
                 self.grid()
@@ -248,6 +230,8 @@ class Game:
                         self.grid_real_x, self.grid_real_y), 3)
 
             else:
+                if self.over is False:
+                    self.get_player()
                 self.over = True
 
             # display the next shape on the panel
@@ -273,12 +257,12 @@ class Game:
                 self.score += 1
 
             if self.over:
-                self.game_over()
+                self.screen.blit(self.make_text("GAME OVER", 32, (255,) * 3, font="arial"),
+                                 ((self.display_width / 2) - 96, self.display_height / 2))
 
             if paused is True:
-                paused_text = pygame.font.SysFont("monospace", 32)
-                paused_text = paused_text.render("PAUSED", 2, (255,) * 3)
-                self.screen.blit(paused_text, ((self.display_width / 2) - 32, self.display_height / 2))
+                self.screen.blit(self.make_text("PAUSED", 32, (255,) * 3, font="arial"),
+                                 ((self.display_width / 2) - 64, self.display_height / 2))
 
             # update screen
             pygame.display.flip()
@@ -309,15 +293,6 @@ class Game:
                     self.grid_real_x * column, self.grid_real_y * row,
                     self.grid_real_x, self.grid_real_y), 1)
 
-    def game_over(self):
-        """
-        Game Over Title.
-        :return:
-        """
-        game_over = pygame.font.SysFont("monospace", 32)
-        game_over = game_over.render("GAME OVER", 2, (255,) * 3)
-        self.screen.blit(game_over, ((self.display_width / 2) - 32, self.display_height / 2))
-
     def pixel(self, x, y):
         """
         Converts grid coordinates to pixel coordinates.
@@ -334,6 +309,9 @@ class Game:
         """
         button = None
         creator = None
+        player_name = None
+        default = "Enter Your Name Here."
+        self.player_name = default
         while True:
 
             # fps
@@ -352,32 +330,49 @@ class Game:
 
                     if event.key == pygame.K_ESCAPE:
                         sys.exit()
+                    else:
+                        if event.key == pygame.K_RETURN and self.player_name != default and self.player_name != "":
+                            return False
+                        if event.key == pygame.K_BACKSPACE and self.player_name != "" and event.key != pygame.K_RETURN:
+                            self.player_name = self.player_name[:-1]
+                        else:
+                            self.player_name += str(event.unicode)
 
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     mouse_pos = pygame.mouse.get_pos()
 
-                    if button.collidepoint(mouse_pos):
+                    if player_name.collidepoint(mouse_pos):
+                        if self.player_name == default:
+                            self.player_name = ""
+
+                    if button.collidepoint(mouse_pos) \
+                            and self.player_name != "" and self.player_name != default:
                         return False
 
                     if creator.collidepoint(mouse_pos):
                         webbrowser.open("https://github.com/edkotkas")
 
-            title = pygame.font.SysFont("monospace", 32)
-            title = title.render("Falling PyBlocks", 2, (255,) * 3)
-            self.screen.blit(title, ((self.window_width / 2) - 150, self.window_height / 8))
+            self.screen.blit(self.make_text("Falling PyBlocks", 32, (255,) * 3),
+                             ((self.window_width / 2) - 150, self.window_height / 8))
 
-            play = pygame.font.SysFont("monospace", 32)
-            play = play.render("PLAY", 2, (255,) * 3)
-
-            self.screen.blit(play, ((self.window_width / 2) - 40, self.window_height / 2))
-
+            # play button, with rectangle
+            self.screen.blit(self.make_text("PLAY", 32, (255, ) * 3),
+                             ((self.window_width / 2) - 40, self.window_height / 2))
             button = pygame.draw.rect(self.screen, (255,) * 3, (
                 (self.window_width / 2) - 50, self.window_height / 2, 95, 35
             ), 2)
 
-            creator = pygame.font.SysFont("monospace", 14)
-            creator = creator.render("Falling PyBlocks by Eduard Kotkas (GitHub - @edkotkas)", 2, (255,) * 3)
-            creator = self.screen.blit(creator, (5, self.window_height - 18))
+            # player name
+            self.screen.blit(self.make_text(self.player_name, 24, (100, ) * 3),
+                             ((self.window_width / 2) - 150, self.window_height / 3))
+            player_name = pygame.draw.rect(self.screen, (255,) * 3, (
+                (self.window_width / 2) - 160, (self.window_height / 3) - 5, (self.window_width / 2) + 80, 35
+            ), 2)
+
+            creator = self.screen.blit(
+                self.make_text("Falling PyBlocks by Eduard Kotkas (GitHub - @edkotkas)",
+                               colour=(255,) * 3
+                               ), (5, self.window_height - 18))
 
             pygame.display.flip()
 
@@ -386,9 +381,32 @@ class Game:
         Reset the game.
         :return:
         """
-
         self.over = False
         self.score = 0
+
+    def make_text(self, string, size=14, colour=(200,)*3, font="monospace"):
+        """
+        Creates text for blit.
+        :param string: text to be shown
+        :param size: font size
+        :param colour: font colour
+        :param font: font family
+        :return:
+        """
+        return pygame.font.SysFont(font, size).render(string, 1, colour)
+
+    def get_player(self):
+        """
+        Gets the players name to be added to the top 5.
+        :return:
+        """
+        self.top_players.append((self.score, self.player_name))
+
+        if len(self.top_players) > 1:
+            for i in range(len(self.top_players)-1):
+                if self.top_players[i + 1][0] > self.top_players[i][0]:
+                    self.top_players[i + 1], self.top_players[i] = self.top_players[i], self.top_players[i + 1]
+
 
 if __name__ == "__main__":
     fpb = Game()
